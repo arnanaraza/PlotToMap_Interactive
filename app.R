@@ -523,11 +523,13 @@ server <- function(input, output, session) {
             acc0 <- cbind(post[1], post1[2], pre[3], post1[3], post2[c(3,4)], pre[5], post1[5], post2[5],
                           pre[6], post1[6], post2[6],pre[7], post1[7],post2[7])
             #add bias column
-            acc1 <- cbind (acc0, old.bias = round(acc0[6] - acc0[3]),2)
-            acc1 <- cbind (acc1, new.bias1 = round(acc1[6] - acc1[4]),2)
-            acc1 <- cbind (acc1, new.bias2 = round(acc1[6] - acc1[5]),2)
-#            print(acc1)
+            acc1 <- cbind (acc0, old.bias = round(acc0[6] - acc0[3],2))
+            acc1 <- cbind (acc1, new.bias1 = round(acc1[6] - acc1[4],2))
+            acc1 <- cbind (acc1, new.bias2 = round(acc1[6] - acc1[5],2))
+           # print(acc1)
+            
             acc1 <- acc1[,c(1,16,17,18)] #get last 3 columns (biases)
+           # print(acc1)
             
             #rename and arrange data frames
             cols <- c('bins', 'bias_pre', 'bias_post_TF', 'bias_post_Agg')
