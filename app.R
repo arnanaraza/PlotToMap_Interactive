@@ -11,12 +11,13 @@ library(foreach)
 library(parallel)
 library(doParallel)
 library(plotrix)
+library(Metrics)
 
 # global variables
-dataDir <- "M:/BiomassCCI/Shiny_ROG/data"
-scriptsDir <- "M:/BiomassCCI/Shiny_ROG/"
+dataDir <- "M:/BiomassCCI/Shiny/data"
+scriptsDir <- "M:/BiomassCCI/Shiny/R"
 mainDir <- "M:/BiomassCCI_2019"
-outDir <- "M:/BiomassCCI/Shiny_ROG/temp"
+outDir <- "M:/BiomassCCI/Shiny/results"
 agbTilesDir <- "M:/BiomassCCI/data/agb"
 treeCoverDir <- '//GRS_NAS_01/GRSData/global_products/Hansen/treecover_2010/treecover2010_v3' # make sure of folder access
 SRS <- CRS("+init=epsg:4326")
@@ -32,7 +33,10 @@ source('TileNames.R')
 source('BlockMeans.R')
 source('invDasymetry.R')
 source('OnePlot_450.R')
-
+source('Accuracy.R')
+source('CreateDir.R')
+source('ThreePlots.R')
+source('TwoPlots.R')
 
 #ui
 ui <- fluidPage(
@@ -78,9 +82,7 @@ ui <- fluidPage(
       # see temporal fix effect 
       radioButtons(inputId = "temporal", label = "Apply Temporal fix?",
                   choices = c("yes", "no"),selected = character(0)),
-      radioButtons(inputId = "fraction", label = "Apply Forest Fraction?",
-                   choices = c("yes", "no"),selected = character(0)),
-
+      
       # aggregation level
       radioButtons(inputId = "aggregation", label = "Apply Aggregation?",
                    choices = c("yes", "no"),selected = character(0)),
@@ -90,7 +92,12 @@ ui <- fluidPage(
             condition = "input.aggregation == 'yes'",
             numericInput("obs1", "Aggregation:", 0.1, min = 0.001, max = 1),
             verbatimTextOutput("agg")
-          )
+          ),
+      
+      # run another output
+      radioButtons(inputId = "comparison", label = "show effects?",
+                   choices = c("yes", "no"),selected = character(0))
+      
     ),
     
   #body
@@ -109,10 +116,10 @@ ui <- fluidPage(
       
       #add tab for aggregation and forest fraction
       tabPanel("Main",
-               plotOutput("valid1")
-            #   DTOutput("accuracy1"),
-             #  plotOutput("valid2"),
-              # DTOutput("accuracy2"),
+               plotOutput("valid1"),
+               DTOutput("accuracy1"),
+               plotOutput("valid2"),
+                DTOutput("accuracy2")
                #plotOutput("valid3"),
                #DTOutput("accuracy3")
                )
@@ -160,6 +167,8 @@ server <- function(input, output, session) {
 
   # creates histogram and change table of pre and post temporal fix
   output$hist <- renderPlot({
+    req(input$temporal)
+    
     # apply growth data to whole plot data by identifying AGB map year
     plots <- data() #should be inside!
     
@@ -184,7 +193,8 @@ server <- function(input, output, session) {
     # add plots with 1-2 NA from the "uniques" (it's just 0.06% of the total dataset)
     plotsNew <- rbind(plotsNew, subset(plots, is.na(GEZ)))
     
-    ChangeTable(plots, plotsNew)
+    ct <- ChangeTable(plots, plotsNew)
+    DT::datatable(ct, options = list(dom = 't'))
     
     # export new AGB data according to date generated
    # write.csv(plotsNew, paste0('GlobBiomass_validation_data_600_TempFixed_',Sys.Date(),'.csv'), row.names=FALSE)
@@ -193,11 +203,13 @@ server <- function(input, output, session) {
   
   # INVDASYMETRY -----------------------------------------------------------------------
   
-  # aggregation
-#  output$agg <- reactive({input$obs1})
-  
   # TF only ---------------------------------------
   output$valid1 <- renderPlot({
+    req(input$temporal)
+    req(input$scale)
+    req(input$global)
+    req(input$aggregation)
+    
     if(input$temporal == 'yes'){
       plots <- data() 
       gez <- sort(as.vector((unique(plots$GEZ))))
@@ -210,37 +222,310 @@ server <- function(input, output, session) {
       plotsNew <- data()
     }
     
-    #Invdasymetry
-
+    #Invdasymetry-------------------------------------
+    
+    #COUNTRY
     if(input$scale == 'global' & input$global == 'country'){
-      AGBdata <- invDasymetry(plotsNew, "ZONE",  input$subglobal, input$obs1, 5)
+      
+      #yes TF, yes agg
+      if (input$aggregation == 'yes' & input$temporal == 'yes'){
+        AGBdata <- invDasymetry(plotsNew, "ZONE",  input$subglobal, input$obs1, 5)
+        CreateDir(outDir, input$subglobal)
+        resultsDir <- paste0(outDir,'/', input$subglobal)
+        save(AGBdata, file = file.path(resultsDir, 
+                                       paste0("agg01_", input$subglobal, ".Rdata")))
+      }
+      #no TF, yes agg
+      if (input$aggregation == 'yes' & input$temporal == 'no'){
+        AGBdata <- invDasymetry(plotsNew, "ZONE",  input$subglobal, input$obs1, 5)
+        CreateDir(outDir, input$subglobal)
+        resultsDir <- paste0(outDir,'/', input$subglobal)
+        save(AGBdata, file = file.path(resultsDir, 
+                                       paste0("agg01x_", input$subglobal, ".Rdata")))
+      } 
+      #yes TF, no agg
+      if (input$aggregation == 'no' & input$temporal == 'yes'){
+        AGBdata <- invDasymetry(plotsNew, "ZONE", input$subglobal, wghts = T)
+        CreateDir(outDir, input$subglobal)
+        resultsDir <- paste0(outDir,'/', input$subglobal)
+        save(AGBdata, file = file.path(resultsDir, 
+                                       paste0("InvDasyPlotx_", input$subglobal, ".Rdata")))
+      } 
+      # no processing at all
+      if (input$aggregation == 'no' & input$temporal == 'no'){
+        AGBdata <- invDasymetry(plotsNew, "ZONE", input$subglobal, wghts = T)
+        CreateDir(outDir, input$subglobal)
+        resultsDir <- paste0(outDir,'/', input$subglobal)
+        save(AGBdata, file = file.path(resultsDir, 
+                                       paste0("InvDasyPlot_", input$subglobal, ".Rdata")))
+      }
     }
-    else{
-      AGBdata <- invDasymetry(plotsNew, "GEZ", input$subglobal, input$obs1, 5)}
+  
+    #BIOMES
+    if(input$scale == 'global' & input$global == 'biome'){
+      #conditions---------
+      if (input$aggregation == 'yes' & input$temporal == 'yes'){
+        AGBdata <- invDasymetry(plotsNew, "GEZ",  input$subglobal, input$obs1, 5)
+        CreateDir(outDir, input$subglobal)
+        resultsDir <- paste0(outDir,'/', input$subglobal)
+        save(AGBdata, file = file.path(resultsDir, 
+                                       paste0("agg01_", input$subglobal, ".Rdata")))
+      }
+      #no TF, yes aggregation
+      if (input$aggregation == 'yes' & input$temporal == 'no'){
+        AGBdata <- invDasymetry(plotsNew, "GEZ",  input$subglobal, input$obs1, 5)
+        CreateDir(outDir, input$subglobal)
+        resultsDir <- paste0(outDir,'/', input$subglobal)
+        save(AGBdata, file = file.path(resultsDir, 
+                                       paste0("agg01x_", input$subglobal, ".Rdata")))
+      } 
+      #yes TF, no aggregation
+      if (input$aggregation == 'no' & input$temporal == 'yes'){
+        AGBdata <- invDasymetry(plotsNew, "GEZ", input$subglobal, wghts = T)
+        CreateDir(outDir, input$subglobal)
+        resultsDir <- paste0(outDir,'/', input$subglobal)
+        save(AGBdata, file = file.path(resultsDir, 
+                                       paste0("InvDasyPlotx_", input$subglobal, ".Rdata")))
+      } 
+      # if there's no processing at all
+      if (input$aggregation == 'no' & input$temporal == 'no'){
+        AGBdata <- invDasymetry(plotsNew, "GEZ", input$subglobal, wghts = T)
+        CreateDir(outDir, input$subglobal)
+        resultsDir <- paste0(outDir,'/', input$subglobal)
+        save(AGBdata, file = file.path(resultsDir,  
+                                       paste0("InvDasyPlot_", input$subglobal, ".Rdata")))
+      }
+    }
     
     #one plot
     OnePlot(AGBdata$plotAGB_10, AGBdata$mapAGB,'Sample Plots')
-    
+    resultsDir <<- resultsDir
   })
   
+  # add accuracy table
+  output$accuracy1 <- renderDT({
+    #COUNTRY
+    if(input$scale == 'global' & input$global == 'country'){
+
+      #yes TF, yes agg (ideal)
+      if (input$aggregation == 'yes' & input$temporal == 'yes'){
+        Rdata <- list.files(resultsDir, pattern='agg01')
+        AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+      }
+      #no TF, yes agg
+      if (input$aggregation == 'yes' & input$temporal == 'no'){
+        Rdata <- list.files(resultsDir, pattern='agg01x')
+        AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+      } 
+      #yes TF, no agg
+      if (input$aggregation == 'no' & input$temporal == 'yes'){
+        Rdata <- list.files(resultsDir, pattern='InvDasyPlotx_')
+        AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+      } 
+      # no processing at all
+      if (input$aggregation == 'no' & input$temporal == 'no'){
+        Rdata <- list.files(resultsDir, pattern='InvDasyPlot')
+        AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+      }
+    }
+    
+    
+    #BIOME
+    if(input$scale == 'global' & input$global == 'biome'){
+      
+      #yes TF, yes agg
+      if (input$aggregation == 'yes' & input$temporal == 'yes'){
+        Rdata <- list.files(resultsDir, pattern='agg01')
+        AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+      }
+      #no TF, yes agg
+      if (input$aggregation == 'yes' & input$temporal == 'no'){
+        Rdata <- list.files(resultsDir, pattern='agg01x')
+        AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+      } 
+      #yes TF, no agg
+      if (input$aggregation == 'no' & input$temporal == 'yes'){
+        Rdata <- list.files(resultsDir, pattern='InvDasyPlotx_')
+        AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+      } 
+      # no processing at all
+      if (input$aggregation == 'no' & input$temporal == 'no'){
+        Rdata <- list.files(resultsDir, pattern='InvDasyPlot')
+        AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+      }
+    }
   
-  # TF + Forest Scaling ----------------------------
-  #output$valid2 <- renderPlot({
-#    if(input$temporal == 'yes' && input$fraction == 'yes'){
- #   }#two plots
+    #metrics per bin
+    acc <- Accuracy(AGBdata, 6)
+    acc1 <- cbind (acc, old.bias = round((acc[4] - acc[3]), 2)) #bias column
+    names(acc1) <- c('AGB class (Mg/ha)','n (plots)', 'AGBref (Mg/ha)', 'AGBmap (Mg/ha)',  
+                     'RMSE (Mg/ha)', 'Rel.RMSE (%)', 'SD error (Mg/ha)',  'Bias (Mg/ha)')
+    DT::datatable(acc1, options = list(dom = 't'))
     
+
+  })
     
+  # > 1 plots  ------------------------------------------------------------------
+    output$valid2 <- renderPlot({
+      if (input$comparison == 'yes'){
+        # if baseline exist...
+        RdBase <- list.files(resultsDir, pattern='InvDasyPlot_')
+        if(length(RdBase) == 1){
+          
+          #get data
+          RdTemp <- list.files(resultsDir, pattern='InvDasyPlotx_')
+          RdAgg <- list.files(resultsDir, pattern='agg01x_')
+          RdBoth <- list.files(resultsDir, pattern='agg01_')
+          
+          #both TF and Agg effects
+          if(length(RdBoth) == 1 & length(RdTemp) == 1){
+            #load only when file exist
+            AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
+            AGBTemp <-get(load(paste0(resultsDir, '/', RdTemp)))
+            AGBBoth <-get(load(paste0(resultsDir, '/', RdBoth)))
+            
+            #three plots
+            ThreePlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBTemp$plotAGB_10,AGBTemp$mapAGB, 
+                       AGBBoth$plotAGB_10,AGBBoth$mapAGB,'Sample plot',
+                       fname=file.path(resultsDir, paste0("EffectsBoth_",Sys.Date(),".png")))
+          }
+          #TF effect, no Agg
+          if(length(RdTemp) == 1){
+            #load only when file exist
+            AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
+            AGBTemp <-get(load(paste0(resultsDir, '/', RdTemp)))
+            
+            
+            #two plots
+            TwoPlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBTemp$plotAGB_10,AGBTemp$mapAGB, 
+                     'Sample plot', fname=file.path(resultsDir, paste0("EffectsTF_",Sys.Date(),".png")))
+          }
+          #Agg effect, no TF
+          if(length(RdAgg) == 1){
+            #load only when file exist
+            AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
+            AGBAgg <-get(load(paste0(resultsDir, '/', RdAgg)))
+            
+            #two plots
+            TwoPlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBAgg$plotAGB_10,AGBAgg$mapAGB, 
+                     'Sample plot', fname=file.path(resultsDir, paste0("EffectsAgg_",Sys.Date(),".png")))
+          }
+          
+          
+        }
+        
+        else{print('run baseline first (no TF - no Aggregation)')}
+        
+      } else{print('run baseline first (no TF - no Aggregation)')}
+      
+        
+      })
     
-  #})
-  # TF + Forest Scaling + Aggregation
-  #output$valid3 <- renderPlot({
-   # if(input$agg == 'yes' && input$fraction == 'yes'){
-    #}#three plots
+    output$accuracy2 <- renderDT({
+      if (input$comparison == 'yes'){
+        # if baseline exist...
+        RdBase <- list.files(resultsDir, pattern='InvDasyPlot_')
+        if(length(RdBase) == 1){
+          
+          #get data
+          RdTemp <- list.files(resultsDir, pattern='InvDasyPlotx_')
+          RdAgg <- list.files(resultsDir, pattern='agg01x_')
+          RdBoth <- list.files(resultsDir, pattern='agg01_')
+          
+          #TF effect, no Agg
+          if(length(RdTemp) == 1 & length(RdAgg) == 0){
+            #load only when file exist
+            AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
+            AGBTemp <-get(load(paste0(resultsDir, '/', RdTemp)))
+            
+            #metrics per bin
+            pre <- Accuracy(AGBBase, 6) #data, number of bins
+            post <- Accuracy(AGBTemp, 6)
+            
+            #combine pre and post
+            acc0 <- cbind(post[1], post[2], pre[3], post[c(3,4)],pre[5], post[5],
+                          pre[6], post[6],pre[7], post[7])
+            ###gives the ff: bins   plots_count  plot_pre    plot_post     rmse pre post     rrmse pre post
+            
+            #add bias column
+            acc1 <- cbind (acc0, old.bias = acc0[5] - acc0[3])
+            acc1 <- cbind (acc1, new.bias = acc1[5] - acc1[4])
+            
+            #rename and arrange data frames
+            cols <- c('bins','plot_count','AGBplot_pre', 'AGBplot_post', 'AGBmap',  'rmse_pre', 
+                      'rmse_post','rrmse_pre', 'rrmse_post', 'sde_pre', 'sde_post', 'bias_pre', 'bias_post')
+            
+            acc2 <- setnames(acc1, cols)
+            DT::datatable(acc2, options = list(dom = 't'))
+            
+            
+            
+          }
+          #Agg effect, no TF
+          if(length(RdAgg) == 1 & length(RdTemp == 0)){
+            #load only when file exist
+            AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
+            AGBAgg <-get(load(paste0(resultsDir, '/', RdAgg)))
+            
+            #metrics per bin
+            pre <- Accuracy(AGBBase, 6) #data, number of bins
+            post <- Accuracy(AGBAgg, 6)
+            
+            #combine pre and post
+            acc0 <- cbind(post[1], post[2], pre[3], post[c(3,4)],pre[5], post[5],
+                          pre[6], post[6],pre[7], post[7])
+            ###gives the ff: bins   plots_count  plot_pre    plot_post     rmse pre post     rrmse pre post
+            
+            #add bias column
+            acc1 <- cbind (acc0, old.bias = acc0[5] - acc0[3])
+            acc1 <- cbind (acc1, new.bias = acc1[5] - acc1[4])
+            
+            #rename and arrange data frames
+            cols <- c('bins','plot_count','AGBplot_pre', 'AGBplot_post', 'AGBmap',  'rmse_pre', 
+                      'rmse_post','rrmse_pre', 'rrmse_post', 'sde_pre', 'sde_post', 'bias_pre', 'bias_post')
+            
+            acc2 <- setnames(acc1, cols)
+            DT::datatable(acc2, options = list(dom = 't'))
+            
+          }
+          
+          #both TF and Agg effects
+          if(length(RdBoth) == 1 & length(RdTemp) == 1){
+            #load only when file exist
+            AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
+            AGBAgg <-get(load(paste0(resultsDir, '/', RdAgg)))
+            AGBTemp <-get(load(paste0(resultsDir, '/', RdTemp)))
+            
+            #metrics per bin
+            pre <- Accuracy(AGBBase, 6) #data, number of bins
+            post1 <- Accuracy(AGBTemp, 6)
+            post2 <- Accuracy(AGBAgg, 6)
+            
+            #combine pre and post
+            acc0 <- cbind(post[1], post1[2], pre[3], post1[3], post2[c(3,4)], pre[5], post1[5], post2[5],
+                          pre[6], post1[6], post2[6],pre[7], post1[7],post2[7])
+            
+            #add bias column
+            acc1 <- cbind (acc0, old.bias = acc0[6] - acc0[3])
+            acc1 <- cbind (acc1, new.bias1 = acc1[6] - acc1[4])
+            acc1 <- cbind (acc1, new.bias2 = acc1[6] - acc1[5])
+            acc1 <- acc1[,c(1,2,13,14,15)]
+            
+            #rename and arrange data frames
+            cols <- c('bins','plot_count', 'bias_pre', 'bias_post_TF', 'bias_post_Agg')
+            names(acc1) <- cols
+            acc1
+            DT::datatable(acc1, options = list(dom = 't'))
+            
+          }
+          
+        }
+        
+        else{print('run baseline first (no TF - no Aggregation)')}
+      }else{print('run baseline first (no TF - no Aggregation)')}
+    })
     
-    
-    
-#  })
-  
+
 }
 
 shinyApp(ui, server)

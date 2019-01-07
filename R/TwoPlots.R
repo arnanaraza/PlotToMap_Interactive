@@ -1,6 +1,6 @@
 ## FUNCTION TO COMPARE TWO BINNED PLOTS
 
-TwoPlots <- function(x, y, x1, y1, caption = "", title=""){
+TwoPlots <- function(x, y, x1, y1, caption = "",fname="", title=""){
   intervals <- c(0:12*25, 7:12*50, Inf)
   
   col1 <- rgb(red = 1, green = 0, blue = 0, alpha = 0.5)
@@ -22,9 +22,9 @@ TwoPlots <- function(x, y, x1, y1, caption = "", title=""){
     r <- c(0, 825)
   }
   
- # setwd(out.dir)
+  setwd(outDir)
   
-#  png(fname, 1000, 1000, res=150)
+   png(fname, 1000, 1000, res=150)
   plot(ux,uy, las=1, main=caption, pch=16, col= col1,cex=cx,
        xlab="Mean reference AGB (Mg/ha)", xlim=r,
        ylab="Mapped AGB (Mg/ha)", ylim=r,xaxt="n")
@@ -87,7 +87,7 @@ TwoPlots <- function(x, y, x1, y1, caption = "", title=""){
   }
   else{axis(1,at=0:6*100, labels=c(0:6*100))
 }
-#  dev.off()
+ dev.off()
 #  setwd(main.dir)
   
 }

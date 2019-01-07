@@ -23,9 +23,9 @@ ThreePlots <- function(x, y, x1, y1, x2,y2, caption = "", fname="", title=''){
     r <- c(0, 825)
   }
   
- # setwd(out.dir)
+##  setwd(outDir)
   
- # png(fname, 1000, 1000, res=150)
+#  png(fname, 1000, 1000, res=150)
   
   plot(ux,uy, las=1, main=caption, pch=16, cex=cx,col= cols[1],
        xlab="Mean reference AGB (Mg/ha)", xlim=r,
@@ -130,10 +130,10 @@ ThreePlots <- function(x, y, x1, y1, x2,y2, caption = "", fname="", title=''){
     axis.break(breakpos=700)
   }
   else{axis(1,at=0:6*100, labels=c(0:6*100))
-}
-  #dev.off()
- # setwd(main.dir)
+  }
   
+ # dev.off()
+#  setwd(mainDir)
 }
 
 
