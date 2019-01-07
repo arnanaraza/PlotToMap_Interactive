@@ -1,7 +1,7 @@
 ## FUNCTION TO COMPARE TWO BINNED PLOTS
 
 ThreePlots <- function(x, y, x1, y1, x2,y2, caption = "", fname="", title=''){
-  intervals <- c(0:12*25, 7:12*50, Inf)
+  intervals <- c(0:12*25, 7:8*50, Inf)
   
  # col1 <- rgb(red = 1, green = 0, blue = 0, alpha = 0.5)
   #col2 <- rgb(red = 0, green = 1, blue = 0, alpha = 0.5)
@@ -18,9 +18,9 @@ ThreePlots <- function(x, y, x1, y1, x2,y2, caption = "", fname="", title=''){
   cx <- (2:7*0.25)[findInterval(nu, c(0,10,20,50,100,200))]
 
   # are there extremely high values on the x-axis?
-  if(ux[length(ux)] > 800){
-    ux[length(ux)] <- 800
-    r <- c(0, 825)
+  if(ux[length(ux)] > 400){
+    ux[length(ux)] <- 500
+    r <- c(0, 525)
   }
   
 ##  setwd(outDir)
@@ -71,7 +71,7 @@ ThreePlots <- function(x, y, x1, y1, x2,y2, caption = "", fname="", title=''){
   abline(0,1, lty=2, lwd=1)
   
   if (title == 'comp'){
-    t <- "#/bin, agg01"
+    t <- "#/bin, TF"
   }else if (title == 'inter'){
     t <- "#/bin, GEOCARBON"}
   else{t <- "#/bin"}
@@ -125,11 +125,11 @@ ThreePlots <- function(x, y, x1, y1, x2,y2, caption = "", fname="", title=''){
 
   
   
-  if(ux[length(ux)] == 800){
-    axis(1,at=0:4*200, labels=c(0:3*200, ">600"))
-    axis.break(breakpos=700)
+  if(ux[length(ux)] == 500){
+    axis(1,at=0:5*100, labels=c(0:4*100, ">400"))
+    axis.break(breakpos=450)
   }
-  else{axis(1,at=0:6*100, labels=c(0:6*100))
+  else{axis(1,at=0:4*100, labels=c(0:4*100))
   }
   
  # dev.off()

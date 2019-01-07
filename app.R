@@ -1,3 +1,4 @@
+rm(list=ls())
 options(shiny.maxRequestSize = 30*1024^2)
 
 # packages
@@ -50,7 +51,7 @@ ui <- fluidPage(
                 accept = c(".csv")),
       
       # scale options
-      selectInput(inputId = "scale", label = "Plot AGB is intercontinental?",
+      selectInput(inputId = "scale", label = "Plot AGB is intercontinental?", selected=NULL,
                   choices = c("local", "global")),
       
       
@@ -61,7 +62,15 @@ ui <- fluidPage(
                         c('country', 'biome')),# multiple = TRUE),
             verbatimTextOutput("global")
           ),
-          
+      
+          # plot overview
+          conditionalPanel(
+            condition = "input.scale == 'global'",
+            selectInput(inputId = "overview", label = "Overview field",
+                        choices = c("fez", "year")),
+            verbatimTextOutput("overview")
+          ),
+              
           # If intercontinental, chose between continents and biomes
           conditionalPanel(
             condition = "input.scale == 'global'",
@@ -71,13 +80,7 @@ ui <- fluidPage(
           ),
         
       
-      # plot overview
-      conditionalPanel(
-        condition = "input.scale == 'global'",
-        selectInput(inputId = "overview", label = "Overview field",
-                    choices = c("fez", "year")),
-        verbatimTextOutput("overview")
-      ),
+
       
       # see temporal fix effect 
       radioButtons(inputId = "temporal", label = "Apply Temporal fix?",
@@ -156,10 +159,14 @@ server <- function(input, output, session) {
   
   #plots graph reactive to selected input
   output$graph <- renderPlot(
-    if(input$overview == 'fez'){
-      FezPie(data())}
-    else{
-      YearPie(data())}
+    if (input$scale == 'global'){
+      if(input$overview == 'fez'){
+        FezPie(data())}
+      else{
+        YearPie(data())}
+      
+    }else{print('overview is for global datasets only')}
+
     )
   
   # TEMPORAL FIX -----------------------------------------------------------------------
@@ -168,7 +175,8 @@ server <- function(input, output, session) {
   # creates histogram and change table of pre and post temporal fix
   output$hist <- renderPlot({
     req(input$temporal)
-    
+    if(input$temporal == 'yes'){
+      
     # apply growth data to whole plot data by identifying AGB map year
     plots <- data() #should be inside!
     
@@ -180,9 +188,13 @@ server <- function(input, output, session) {
     plotsNew <- rbind(plotsNew, subset(plots, is.na(GEZ)))
     
     HistoShift(plots, plotsNew)
-    
+    } else {print('no temporal adjustment set')}
   })
   output$table1 <- renderDT({
+    req(input$temporal)
+    
+    if(input$temporal == 'yes'){
+    
     # apply growth data to whole plot data by identifying AGB map year
     plots <- data() #should be inside!
     
@@ -195,9 +207,9 @@ server <- function(input, output, session) {
     
     ct <- ChangeTable(plots, plotsNew)
     DT::datatable(ct, options = list(dom = 't'))
-    
+    } else {print('no temporal adjustment set')}
     # export new AGB data according to date generated
-   # write.csv(plotsNew, paste0('GlobBiomass_validation_data_600_TempFixed_',Sys.Date(),'.csv'), row.names=FALSE)
+    # write.csv(plotsNew, paste0('GlobBiomass_validation_data_600_TempFixed_',Sys.Date(),'.csv'), row.names=FALSE)
     
   })
   
@@ -298,23 +310,24 @@ server <- function(input, output, session) {
     }
     
     #one plot
-    OnePlot(AGBdata$plotAGB_10, AGBdata$mapAGB,'Sample Plots')
-    resultsDir <<- resultsDir
+    OnePlot(AGBdata$plotAGB_10, AGBdata$mapAGB, input$subglobal)
+    resultsDir <<- resultsDir #make it a global variable
   })
   
   # add accuracy table
   output$accuracy1 <- renderDT({
+    
     #COUNTRY
     if(input$scale == 'global' & input$global == 'country'){
-
+      
       #yes TF, yes agg (ideal)
       if (input$aggregation == 'yes' & input$temporal == 'yes'){
-        Rdata <- list.files(resultsDir, pattern='agg01')
+        Rdata <- list.files(resultsDir, pattern='agg01_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
       }
       #no TF, yes agg
       if (input$aggregation == 'yes' & input$temporal == 'no'){
-        Rdata <- list.files(resultsDir, pattern='agg01x')
+        Rdata <- list.files(resultsDir, pattern='agg01x_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
       } 
       #yes TF, no agg
@@ -324,9 +337,10 @@ server <- function(input, output, session) {
       } 
       # no processing at all
       if (input$aggregation == 'no' & input$temporal == 'no'){
-        Rdata <- list.files(resultsDir, pattern='InvDasyPlot')
+        Rdata <- list.files(resultsDir, pattern='InvDasyPlot_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
       }
+ 
     }
     
     
@@ -335,12 +349,12 @@ server <- function(input, output, session) {
       
       #yes TF, yes agg
       if (input$aggregation == 'yes' & input$temporal == 'yes'){
-        Rdata <- list.files(resultsDir, pattern='agg01')
+        Rdata <- list.files(resultsDir, pattern='agg01_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
       }
       #no TF, yes agg
       if (input$aggregation == 'yes' & input$temporal == 'no'){
-        Rdata <- list.files(resultsDir, pattern='agg01x')
+        Rdata <- list.files(resultsDir, pattern='agg01x_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
       } 
       #yes TF, no agg
@@ -350,17 +364,21 @@ server <- function(input, output, session) {
       } 
       # no processing at all
       if (input$aggregation == 'no' & input$temporal == 'no'){
-        Rdata <- list.files(resultsDir, pattern='InvDasyPlot')
+        Rdata <- list.files(resultsDir, pattern='InvDasyPlot_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
       }
+      
+      
+
     }
-  
     #metrics per bin
     acc <- Accuracy(AGBdata, 6)
     acc1 <- cbind (acc, old.bias = round((acc[4] - acc[3]), 2)) #bias column
-    names(acc1) <- c('AGB class (Mg/ha)','n (plots)', 'AGBref (Mg/ha)', 'AGBmap (Mg/ha)',  
+    cols <- c('AGB class (Mg/ha)','n (plots)', 'AGBref (Mg/ha)', 'AGBmap (Mg/ha)',  
                      'RMSE (Mg/ha)', 'Rel.RMSE (%)', 'SD error (Mg/ha)',  'Bias (Mg/ha)')
+    acc1 <- setnames(acc1, cols)
     DT::datatable(acc1, options = list(dom = 't'))
+    
     
 
   })
@@ -386,8 +404,8 @@ server <- function(input, output, session) {
             
             #three plots
             ThreePlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBTemp$plotAGB_10,AGBTemp$mapAGB, 
-                       AGBBoth$plotAGB_10,AGBBoth$mapAGB,'Sample plot',
-                       fname=file.path(resultsDir, paste0("EffectsBoth_",Sys.Date(),".png")))
+                       AGBBoth$plotAGB_10,AGBBoth$mapAGB, input$subglobal,
+                       fname=file.path(resultsDir, paste0("EffectsBoth_",Sys.Date(),".png")), title='comp')
           }
           #TF effect, no Agg
           if(length(RdTemp) == 1){
@@ -398,7 +416,7 @@ server <- function(input, output, session) {
             
             #two plots
             TwoPlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBTemp$plotAGB_10,AGBTemp$mapAGB, 
-                     'Sample plot', fname=file.path(resultsDir, paste0("EffectsTF_",Sys.Date(),".png")))
+                     input$subglobal, fname=file.path(resultsDir, paste0("EffectsTF_",Sys.Date(),".png")))
           }
           #Agg effect, no TF
           if(length(RdAgg) == 1){
@@ -408,7 +426,7 @@ server <- function(input, output, session) {
             
             #two plots
             TwoPlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBAgg$plotAGB_10,AGBAgg$mapAGB, 
-                     'Sample plot', fname=file.path(resultsDir, paste0("EffectsAgg_",Sys.Date(),".png")))
+                     input$subglobal, fname=file.path(resultsDir, paste0("EffectsAgg_",Sys.Date(),".png")))
           }
           
           
@@ -504,15 +522,15 @@ server <- function(input, output, session) {
             #combine pre and post
             acc0 <- cbind(post[1], post1[2], pre[3], post1[3], post2[c(3,4)], pre[5], post1[5], post2[5],
                           pre[6], post1[6], post2[6],pre[7], post1[7],post2[7])
-            
             #add bias column
-            acc1 <- cbind (acc0, old.bias = acc0[6] - acc0[3])
-            acc1 <- cbind (acc1, new.bias1 = acc1[6] - acc1[4])
-            acc1 <- cbind (acc1, new.bias2 = acc1[6] - acc1[5])
-            acc1 <- acc1[,c(1,2,13,14,15)]
+            acc1 <- cbind (acc0, old.bias = round(acc0[6] - acc0[3]),2)
+            acc1 <- cbind (acc1, new.bias1 = round(acc1[6] - acc1[4]),2)
+            acc1 <- cbind (acc1, new.bias2 = round(acc1[6] - acc1[5]),2)
+#            print(acc1)
+            acc1 <- acc1[,c(1,16,17,18)] #get last 3 columns (biases)
             
             #rename and arrange data frames
-            cols <- c('bins','plot_count', 'bias_pre', 'bias_post_TF', 'bias_post_Agg')
+            cols <- c('bins', 'bias_pre', 'bias_post_TF', 'bias_post_Agg')
             names(acc1) <- cols
             acc1
             DT::datatable(acc1, options = list(dom = 't'))
