@@ -13,13 +13,15 @@ library(parallel)
 library(doParallel)
 library(plotrix)
 library(Metrics)
+library(data.table)
+library(shinyFiles)
 
 # global variables
 dataDir <- "M:/BiomassCCI/Shiny/data"
 scriptsDir <- "M:/BiomassCCI/Shiny/R"
 mainDir <- "M:/BiomassCCI_2019"
 outDir <- "M:/BiomassCCI/Shiny/results"
-agbTilesDir <- "M:/BiomassCCI/data/agb"
+#agbTilesDir <- "M:/BiomassCCI/data/agb"
 treeCoverDir <- '//GRS_NAS_01/GRSData/global_products/Hansen/treecover_2010/treecover2010_v3' # make sure of folder access
 SRS <- CRS("+init=epsg:4326")
 forestTHs <- 10 # for
@@ -49,6 +51,11 @@ ui <- fluidPage(
     sidebarPanel(width=2,
       fileInput(inputId = "filedata", label = "Upload data. Choose csv file",
                 accept = c(".csv")),
+      
+      # agb directory
+      sidebarPanel(
+        shinyDirButton("dir", "Chose map AGB directory", "Upload")
+      ),
       
       # scale options
       selectInput(inputId = "scale", label = "Plot AGB is intercontinental?", selected=NULL,
@@ -111,7 +118,8 @@ ui <- fluidPage(
       tabPanel("Overview",
                plotOutput("graph"),
                DTOutput("table")),
-      
+
+                
       #add tab for temporal fix
       tabPanel("Temporal fix",
                   plotOutput("hist"),
@@ -169,6 +177,12 @@ server <- function(input, output, session) {
 
     )
   
+  volumes <- getVolumes()
+  shinyDirChoose(input, 'dir', roots=volumes, session=session)
+  path <- reactive({
+    return(parseDirPath(volumes, input$dir))
+  })
+  
   # TEMPORAL FIX -----------------------------------------------------------------------
   
 
@@ -221,6 +235,8 @@ server <- function(input, output, session) {
     req(input$scale)
     req(input$global)
     req(input$aggregation)
+    
+    agbTilesDir <<- path()
     
     if(input$temporal == 'yes'){
       plots <- data() 
