@@ -21,6 +21,8 @@ dataDir <- "M:/BiomassCCI/Shiny/data"
 scriptsDir <- "M:/BiomassCCI/Shiny/R"
 mainDir <- "M:/BiomassCCI_2019"
 outDir <- "M:/BiomassCCI/Shiny/results"
+resultsDir <- "M:/BiomassCCI/Shiny/results/S.America"
+
 #agbTilesDir <- "M:/BiomassCCI/data/agb"
 treeCoverDir <- '//GRS_NAS_01/GRSData/global_products/Hansen/treecover_2010/treecover2010_v3' # make sure of folder access
 SRS <- CRS("+init=epsg:4326")
@@ -390,7 +392,7 @@ server <- function(input, output, session) {
     #metrics per bin
     acc <- Accuracy(AGBdata, 6)
     acc1 <- cbind (acc, old.bias = round((acc[4] - acc[3]), 2)) #bias column
-    cols <- c('AGB class (Mg/ha)','n (plots)', 'AGBref (Mg/ha)', 'AGBmap (Mg/ha)',  
+    cols <- c('AGB class (Mg/ha)','n (plots)', 'Mean AGBref (Mg/ha)', 'Mean AGBmap (Mg/ha)',  
                      'RMSE (Mg/ha)', 'Rel.RMSE (%)', 'SD error (Mg/ha)',  'Bias (Mg/ha)')
     acc1 <- setnames(acc1, cols)
     DT::datatable(acc1, options = list(dom = 't'))
@@ -419,7 +421,7 @@ server <- function(input, output, session) {
             AGBBoth <-get(load(paste0(resultsDir, '/', RdBoth)))
             
             #three plots
-            ThreePlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBTemp$plotAGB_10,AGBTemp$mapAGB, 
+            ThreePlots(AGBBase$orgPlotAGB, AGBBase$mapAGB, AGBTemp$plotAGB_10,AGBTemp$mapAGB, 
                        AGBBoth$plotAGB_10,AGBBoth$mapAGB, input$subglobal,
                        fname=file.path(resultsDir, paste0("EffectsBoth_",Sys.Date(),".png")), title='comp')
           }
@@ -450,7 +452,7 @@ server <- function(input, output, session) {
         
         else{print('run baseline first (no TF - no Aggregation)')}
         
-      } else{print('run baseline first (no TF - no Aggregation)')}
+      } else{print('run validation first')}
       
         
       })
@@ -459,15 +461,16 @@ server <- function(input, output, session) {
       if (input$comparison == 'yes'){
         # if baseline exist...
         RdBase <- list.files(resultsDir, pattern='InvDasyPlot_')
+        
         if(length(RdBase) == 1){
           
           #get data
           RdTemp <- list.files(resultsDir, pattern='InvDasyPlotx_')
           RdAgg <- list.files(resultsDir, pattern='agg01x_')
           RdBoth <- list.files(resultsDir, pattern='agg01_')
-          
           #TF effect, no Agg
           if(length(RdTemp) == 1 & length(RdAgg) == 0){
+
             #load only when file exist
             AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
             AGBTemp <-get(load(paste0(resultsDir, '/', RdTemp)))
@@ -484,19 +487,17 @@ server <- function(input, output, session) {
             #add bias column
             acc1 <- cbind (acc0, old.bias = acc0[5] - acc0[3])
             acc1 <- cbind (acc1, new.bias = acc1[5] - acc1[4])
-            
             #rename and arrange data frames
-            cols <- c('bins','plot_count','AGBplot_pre', 'AGBplot_post', 'AGBmap',  'rmse_pre', 
-                      'rmse_post','rrmse_pre', 'rrmse_post', 'sde_pre', 'sde_post', 'bias_pre', 'bias_post')
             
-            acc2 <- setnames(acc1, cols)
+            acc2 <- acc1 [,c(1,12,13)]
+            names(acc2) <- c('bins', 'bias_pre_TF', 'bias_post_TF')
+
             DT::datatable(acc2, options = list(dom = 't'))
-            
-            
             
           }
           #Agg effect, no TF
-          if(length(RdAgg) == 1 & length(RdTemp == 0)){
+          if(length(RdAgg) == 1 & length(RdTemp) == 0){
+
             #load only when file exist
             AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
             AGBAgg <-get(load(paste0(resultsDir, '/', RdAgg)))
@@ -504,7 +505,7 @@ server <- function(input, output, session) {
             #metrics per bin
             pre <- Accuracy(AGBBase, 6) #data, number of bins
             post <- Accuracy(AGBAgg, 6)
-            
+
             #combine pre and post
             acc0 <- cbind(post[1], post[2], pre[3], post[c(3,4)],pre[5], post[5],
                           pre[6], post[6],pre[7], post[7])
@@ -515,11 +516,8 @@ server <- function(input, output, session) {
             acc1 <- cbind (acc1, new.bias = acc1[5] - acc1[4])
             
             #rename and arrange data frames
-            cols <- c('bins','plot_count','AGBplot_pre', 'AGBplot_post', 'AGBmap',  'rmse_pre', 
-                      'rmse_post','rrmse_pre', 'rrmse_post', 'sde_pre', 'sde_post', 'bias_pre', 'bias_post')
-            
-            acc2 <- setnames(acc1, cols)
-            DT::datatable(acc2, options = list(dom = 't'))
+            acc2 <- acc1 [,c(1,12,13)]
+            names(acc2) <- c('bins', 'bias_pre_Agg', 'bias_post_Agg')
             
           }
           
@@ -542,23 +540,22 @@ server <- function(input, output, session) {
             acc1 <- cbind (acc0, old.bias = round(acc0[6] - acc0[3],2))
             acc1 <- cbind (acc1, new.bias1 = round(acc1[6] - acc1[4],2))
             acc1 <- cbind (acc1, new.bias2 = round(acc1[6] - acc1[5],2))
-           # print(acc1)
-            
-            acc1 <- acc1[,c(1,16,17,18)] #get last 3 columns (biases)
-           # print(acc1)
-            
+
+            acc2 <- acc1[,c(1,16,17,18)] #get last 3 columns (biases)
+
             #rename and arrange data frames
             cols <- c('bins', 'bias_pre', 'bias_post_TF', 'bias_post_Agg')
-            names(acc1) <- cols
-            acc1
-            DT::datatable(acc1, options = list(dom = 't'))
+            names(acc2) <- cols
+           
+           # DT::datatable(acc1, options = list(dom = 't'))
             
           }
+        DT::datatable(acc2, options = list(dom = 't'))
           
-        }
+        }else{print('run baseline first (no TF - no Aggregation)')}
         
-        else{print('run baseline first (no TF - no Aggregation)')}
-      }else{print('run baseline first (no TF - no Aggregation)')}
+        
+      }else{print('run validation first')}
     })
     
 

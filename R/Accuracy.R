@@ -5,48 +5,49 @@ Accuracy <- function(df, intervals){
   
   #assign AGB bins
   if (intervals == 7){
-    bins <- c(0,50,100,150,200,250,300,Inf) #7 intervals
+    bins <- c(-1,50,100,150,200,250,300,Inf) #7 intervals
     bins.str <-c('0-50','050-100','100-150','150-200','200-250','250-300', '300_above')
   }
   if (intervals == 6){
-    bins <- c(0,100,150,200,250,300,Inf) #6 intervals
+    bins <- c(-1,100,150,200,250,300,Inf) #6 intervals
     bins.str <-c('0-100','100-150','150-200','200-250','250-300', '300_above')
   }
     
     #bins for Aussie
     if (nrow(subset(df, plotAGB_10 > 3000)) > 1){ #if there are large AGB rows
-      bins <- c(0,100,150,200,250,300,600,Inf)
+      bins <- c(-1,100,150,200,250,300,600,Inf)
       bins.str <-c('0-100','100-150','150-200', '200-250','250-300','300-600', '600_above')
     }
   
   #assign grouping of AGB values for plot and map separately per bin
   grp1 <- transform(df, group=cut(plotAGB_10,  breaks=bins))
-    grp2 <- transform(df, group=cut(mapAGB,  breaks=bins))
 
   #aggregate the mean AGB of bins
   agg.plot <- ddply(grp1, .(group), summarise, plotAGB_10=mean(plotAGB_10), .drop=F) 
-  agg.map <- ddply(grp2, .(group), summarise, mapAGB=mean(mapAGB, na.rm=T), .drop=F)
+  agg.map <- ddply(grp1, .(group), summarise, mapAGB=mean(mapAGB, na.rm=T), .drop=F)
                                                                   #drop is important, if not set bins will move upwards 
                                                                   #if there's an NA bin
   
   ##calculate accuracy metrics -- assures values derived are from PLOT BINS
-  grp3 <- cbind(grp1,grp2)
-  grp3 <- grp3[,c(1,6,9,12)] #retains -- plot agb,    plot bin grouping,    map agb,    map bin grouping
-
+ # grp2 <- cbind(grp1,grp2)
+  grp2 <- grp1[,c(1,3,6)] #retains -- plot agb,    plot bin grouping,    map agb
+  
   #rmse per mean agb bin
-  rmse <- grp3 %>% 
+  rmse <- grp2 %>% 
     group_by(group) %>%
     summarise(val=rmse(plotAGB_10, mapAGB))
   
   #relative rmse per mean agb bin
-  div <- grp3 %>% 
+  div <- grp2 %>% 
     group_by(group) %>%
     summarise(val= mean(plotAGB_10))
   
   #error (residual) SD per mean agb bin
-  sde <- grp3 %>% 
+  sde <- grp2 %>% 
     group_by(group) %>%
     summarise(val= sd(plotAGB_10-mapAGB))
+  
+  
   
   len <- length(bins.str) #row control
   agg.plot <- agg.plot[c(1:len),]
@@ -61,7 +62,7 @@ Accuracy <- function(df, intervals){
   df.new <- df.new[,-c(1,3)]
   
   #add plot tally
-  plot.count <- grp1 %>% 
+  plot.count <- grp2 %>% 
     group_by(group) %>%
     tally()
   plot.count <- plot.count [c(1:len),]
