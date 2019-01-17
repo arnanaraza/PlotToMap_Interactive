@@ -1,4 +1,4 @@
-## FUNCTION TO COMPARE TWO BINNED PLOTS
+## FUNCTION TO COMPARE THREE BINNED PLOTS
 
 ThreePlots <- function(x, y, x1, y1, x2,y2, caption = "", fname="", title=''){
   intervals <- c(0:12*25, 7:8*50, Inf)

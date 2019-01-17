@@ -1,40 +1,26 @@
 ## FUNCTIONS TO VISUALIZE HISTOGRAM EFFECT OF TEMPORAL FIX AND ALSO SUMMARIZES IT PER AGB BIN IN A TABLE
 
-HistoShift <- function(old, new){
+HistoShift <-function(old=plots, new=plotsNew) {
   old <- old[with(old, order(old$POINT_X, old$POINT_Y)), ]
   new <- new[with(new, order(new$POINT_X, new$POINT_Y)), ]
   
   
   # bind the agb columns and get other necessary columns for plotting purposes
   plots.2 <- cbind(old, new)
-  plots.3 <- plots.2[,c(1,5,6,7,20,26)]
-  plots.4 <- plots.3[(plots.3$AGB_T_HA < 600 & plots.3$AGB_T_HA.1 <600 & plots.3$AGB_T_HA.1 > 0), ] #select 600 and below, disregard negative for now
+  plots.3 <- plots.2[,c('ZONE','POINT_X','POINT_Y','AGB_T_HA','AGB_T_HA')]
+  plots.4 <- plots.3[(plots.3$AGB_T_HA < 600 & plots.3$AGB_T_HA.1 <600 & plots.3$AGB_T_HA.1 > 0), ] #0-600 Mg/ha window
   
   # create a bar graph with fixed agb bins
   h1 <- hist(plots.4$AGB_T_HA, plot=F, breaks=25)
   h2 <- hist(plots.4$AGB_T_HA.1, plot=F, breaks=25)
   
   
-  #png (filename=paste0(outDir, paste0('/histogram_tempfix_',Sys.Date(),'.png')))
-  
-  # checker if it's Globbiomass or other and assign max values of histogram
-  if ('Europe' %in% unique(new$ZONE) == T ) {
-    y.ax <- 20000}
-  else{
-    y.ax <- 6000
-    }
-  
   plot(h1, xaxt="n", col=rgb(0,0,1,1/4), main='Before and after temporal fix', xlab='AGB_T_HA',ylab='Frequency',
-       xlim = c(0,600), ylim=c(0,y.ax))
+       xlim = c(0,600))
   axis(1,at=0:6*100, labels=c(0:6*100))
   plot(h2,col=rgb(1,0,0,1/4),add=T)
   legend("topright", c("Before", "After", "Overlap"), 
          col=c(rgb(0,0,1,1/4), rgb(1,0,0,1/4), rgb(0.5,0,0.5,1/4)), lwd=10)
-  
- # dev.off()
-  
-  
-  
 }
 
 

@@ -41,11 +41,15 @@ invDasymetry <- function(plots, clmn = "ZONE", value = "Europe", aggr = NULL,
     rsl <- xres(raster(file.path(agbTilesDir, fname)))
   }
   
+  #error control for few plots after aggregation
+  try(if(nrow(plots) <= 1) stop("very few plots selected, try decreasing minPlots or run non-aggregated model"))
+  print(paste0(nrow(plots), ' number of plots being processed'))
+  
   # sample forest fraction and AGB data per cell/plot
   nc <- detectCores()
   cl <- makeCluster(nc-1)
   registerDoParallel(cl, nc)
-  FFAGB <- foreach(i=1:nrow(plots), .combine='rbind', 
+  FFAGB <- foreach(i=1:nrow(plots), .combine='rbind', .errorhandling = 'remove',
                    .packages='raster', .export=c('MakeBlockPolygon', 'SRS',
                                                  'sampleTreeCover', 'TCtileNames',
                                                  'AGBtileNames', 'sampleTreeCover',

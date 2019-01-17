@@ -37,7 +37,7 @@ source('MakeBlockPolygon.R')
 source('TileNames.R')
 source('BlockMeans.R')
 source('invDasymetry.R')
-source('OnePlot_450.R')
+source('OnePlot.R')
 source('Accuracy.R')
 source('CreateDir.R')
 source('ThreePlots.R')
@@ -51,13 +51,9 @@ ui <- fluidPage(
   #sides
   sidebarLayout(
     sidebarPanel(width=2,
-      fileInput(inputId = "filedata", label = "Upload data. Choose csv file",
+      fileInput(inputId = "filedata", label = "Upload plot data (csv)",
                 accept = c(".csv")),
-      
-      # agb directory
-      sidebarPanel(
-        shinyDirButton("dir", "Chose map AGB directory", "Upload")
-      ),
+  
       
       # scale options
       selectInput(inputId = "scale", label = "Plot AGB is intercontinental?", selected=NULL,
@@ -89,7 +85,11 @@ ui <- fluidPage(
           ),
         
       
-
+      # agb directory
+      fluidRow(
+               column(6,div(style = "height:50px;width:170px;background-color: green;",
+                            sidebarPanel(
+                 shinyDirButton("dir", "Map AGB directory", "Upload"))))),
       
       # see temporal fix effect 
       radioButtons(inputId = "temporal", label = "Apply Temporal fix?",
@@ -342,23 +342,28 @@ server <- function(input, output, session) {
       if (input$aggregation == 'yes' & input$temporal == 'yes'){
         Rdata <- list.files(resultsDir, pattern='agg01_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+        acc <- Accuracy(AGBdata, 6, 'agg_tf')
       }
       #no TF, yes agg
       if (input$aggregation == 'yes' & input$temporal == 'no'){
         Rdata <- list.files(resultsDir, pattern='agg01x_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+        acc <- Accuracy(AGBdata, 6, 'agg')
       } 
       #yes TF, no agg
       if (input$aggregation == 'no' & input$temporal == 'yes'){
         Rdata <- list.files(resultsDir, pattern='InvDasyPlotx_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+        acc <- Accuracy(AGBdata, 6, 'tf')
       } 
       # no processing at all
       if (input$aggregation == 'no' & input$temporal == 'no'){
         Rdata <- list.files(resultsDir, pattern='InvDasyPlot_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+        acc <- Accuracy(AGBdata, 6, 'none')
       }
- 
+      DT::datatable(acc, options = list(dom = 't'))
+      
     }
     
     
@@ -369,36 +374,33 @@ server <- function(input, output, session) {
       if (input$aggregation == 'yes' & input$temporal == 'yes'){
         Rdata <- list.files(resultsDir, pattern='agg01_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+        acc <- Accuracy(AGBdata, 6, 'agg_tf')
       }
       #no TF, yes agg
       if (input$aggregation == 'yes' & input$temporal == 'no'){
         Rdata <- list.files(resultsDir, pattern='agg01x_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+        acc <- Accuracy(AGBdata, 6, 'agg')
       } 
       #yes TF, no agg
       if (input$aggregation == 'no' & input$temporal == 'yes'){
         Rdata <- list.files(resultsDir, pattern='InvDasyPlotx_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+        acc <- Accuracy(AGBdata, 6, 'tf')
       } 
       # no processing at all
       if (input$aggregation == 'no' & input$temporal == 'no'){
         Rdata <- list.files(resultsDir, pattern='InvDasyPlot_')
         AGBdata <-get(load(paste0(resultsDir, '/', Rdata)))
+        acc <- Accuracy(AGBdata, 6, 'none')
       }
       
       
-
+      DT::datatable(acc, options = list(dom = 't'))
+      
     }
-    #metrics per bin
-    acc <- Accuracy(AGBdata, 6)
-    acc1 <- cbind (acc, old.bias = round((acc[4] - acc[3]), 2)) #bias column
-    cols <- c('AGB class (Mg/ha)','n (plots)', 'Mean AGBref (Mg/ha)', 'Mean AGBmap (Mg/ha)',  
-                     'RMSE (Mg/ha)', 'Rel.RMSE (%)', 'SD error (Mg/ha)',  'Bias (Mg/ha)')
-    acc1 <- setnames(acc1, cols)
-    DT::datatable(acc1, options = list(dom = 't'))
+    DT::datatable(acc, options = list(dom = 't'))
     
-    
-
   })
     
   # > 1 plots  ------------------------------------------------------------------
@@ -434,7 +436,7 @@ server <- function(input, output, session) {
             
             #two plots
             TwoPlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBTemp$plotAGB_10,AGBTemp$mapAGB, 
-                     input$subglobal, fname=file.path(resultsDir, paste0("EffectsTF_",Sys.Date(),".png")))
+                     input$subglobal, fname=file.path(resultsDir, paste0("EffectsTF_",Sys.Date(),".png")), title='tf')
           }
           #Agg effect, no TF
           if(length(RdAgg) == 1){
@@ -444,7 +446,7 @@ server <- function(input, output, session) {
             
             #two plots
             TwoPlots(AGBBase$plotAGB_10, AGBBase$mapAGB, AGBAgg$plotAGB_10,AGBAgg$mapAGB, 
-                     input$subglobal, fname=file.path(resultsDir, paste0("EffectsAgg_",Sys.Date(),".png")))
+                     input$subglobal, fname=file.path(resultsDir, paste0("EffectsAgg_",Sys.Date(),".png")), title='agg')
           }
           
           
@@ -468,6 +470,7 @@ server <- function(input, output, session) {
           RdTemp <- list.files(resultsDir, pattern='InvDasyPlotx_')
           RdAgg <- list.files(resultsDir, pattern='agg01x_')
           RdBoth <- list.files(resultsDir, pattern='agg01_')
+          
           #TF effect, no Agg
           if(length(RdTemp) == 1 & length(RdAgg) == 0){
 
@@ -495,6 +498,7 @@ server <- function(input, output, session) {
             DT::datatable(acc2, options = list(dom = 't'))
             
           }
+          
           #Agg effect, no TF
           if(length(RdAgg) == 1 & length(RdTemp) == 0){
 
