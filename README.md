@@ -31,6 +31,20 @@ outDir - results directory
 3. Validation results (binned graphs and accuracy table)
 4. Comparison results highlighting effect of temporal fix and/or forest scaling/aggregation
 
+# Output saving
+-Tables are automatically saved
+-Figures aren't, manual saving is possible
+
 # Errors encountered:
 Error in if: argument is of length zero - if statement condition is NULL
 No or wrong access to either Hansen tree cover or AGB tiles resulting into NULL map and/or weighted plot AGB values. 
+
+# To be added:
+1. Progress bar
+2. Image download button
+3. Nicer window format
+4. Transparency and data-use agreement section
+
+# To be tested:
+1. Use of local forest cover dataset
+2
