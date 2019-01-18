@@ -1,13 +1,14 @@
 ## FUNCTIONS TO VISUALIZE HISTOGRAM EFFECT OF TEMPORAL FIX AND ALSO SUMMARIZES IT PER AGB BIN IN A TABLE
 
-HistoShift <-function(old=plots, new=plotsNew) {
+HistoShift <-function(old=NA, new=NA) {
   old <- old[with(old, order(old$POINT_X, old$POINT_Y)), ]
   new <- new[with(new, order(new$POINT_X, new$POINT_Y)), ]
+  names(new)[names(new) == 'AGB_T_HA'] <- 'AGB_T_HA.1'
   
   
   # bind the agb columns and get other necessary columns for plotting purposes
   plots.2 <- cbind(old, new)
-  plots.3 <- plots.2[,c('ZONE','POINT_X','POINT_Y','AGB_T_HA','AGB_T_HA')]
+  plots.3 <- plots.2[,c('ZONE','POINT_X','POINT_Y','AGB_T_HA','AGB_T_HA.1')]
   plots.4 <- plots.3[(plots.3$AGB_T_HA < 600 & plots.3$AGB_T_HA.1 <600 & plots.3$AGB_T_HA.1 > 0), ] #0-600 Mg/ha window
   
   # create a bar graph with fixed agb bins

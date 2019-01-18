@@ -416,7 +416,7 @@ server <- function(input, output, session) {
           RdBoth <- list.files(resultsDir, pattern='agg01_')
           
           #both TF and Agg effects
-          if(length(RdBoth) == 1 & length(RdTemp) == 1){
+          if(length(RdAgg) == 1 & length(RdTemp) == 1){
             #load only when file exist
             AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
             AGBTemp <-get(load(paste0(resultsDir, '/', RdTemp)))
@@ -428,7 +428,7 @@ server <- function(input, output, session) {
                        fname=file.path(resultsDir, paste0("EffectsBoth_",Sys.Date(),".png")), title='comp')
           }
           #TF effect, no Agg
-          if(length(RdTemp) == 1){
+          if(length(RdTemp) == 1 & length(RdAgg) == 0){
             #load only when file exist
             AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
             AGBTemp <-get(load(paste0(resultsDir, '/', RdTemp)))
@@ -439,7 +439,7 @@ server <- function(input, output, session) {
                      input$subglobal, fname=file.path(resultsDir, paste0("EffectsTF_",Sys.Date(),".png")), title='tf')
           }
           #Agg effect, no TF
-          if(length(RdAgg) == 1){
+          if(length(RdAgg) == 1 & length(RdTemp) == 0){
             #load only when file exist
             AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
             AGBAgg <-get(load(paste0(resultsDir, '/', RdAgg)))
@@ -449,7 +449,7 @@ server <- function(input, output, session) {
                      input$subglobal, fname=file.path(resultsDir, paste0("EffectsAgg_",Sys.Date(),".png")), title='agg')
           }
           
-          
+            
         }
         
         else{print('run baseline first (no TF - no Aggregation)')}
@@ -461,6 +461,7 @@ server <- function(input, output, session) {
     
     output$accuracy2 <- renderDT({
       if (input$comparison == 'yes'){
+        
         # if baseline exist...
         RdBase <- list.files(resultsDir, pattern='InvDasyPlot_')
         
@@ -471,8 +472,10 @@ server <- function(input, output, session) {
           RdAgg <- list.files(resultsDir, pattern='agg01x_')
           RdBoth <- list.files(resultsDir, pattern='agg01_')
           
+          
+          
           #TF effect, no Agg
-          if(length(RdTemp) == 1 & length(RdAgg) == 0){
+           if(length(RdTemp) == 1 & length(RdAgg) == 0){
 
             #load only when file exist
             AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
@@ -482,25 +485,16 @@ server <- function(input, output, session) {
             pre <- Accuracy(AGBBase, 6) #data, number of bins
             post <- Accuracy(AGBTemp, 6)
             
-            #combine pre and post
-            acc0 <- cbind(post[1], post[2], pre[3], post[c(3,4)],pre[5], post[5],
-                          pre[6], post[6],pre[7], post[7])
-            ###gives the ff: bins   plots_count  plot_pre    plot_post     rmse pre post     rrmse pre post
-            
-            #add bias column
-            acc1 <- cbind (acc0, old.bias = acc0[5] - acc0[3])
-            acc1 <- cbind (acc1, new.bias = acc1[5] - acc1[4])
-            #rename and arrange data frames
-            
-            acc2 <- acc1 [,c(1,12,13)]
-            names(acc2) <- c('bins', 'bias_pre_TF', 'bias_post_TF')
+            #just get bias column
+            acc <- cbind(pre[1], pre[5], post[5])
+            names(acc) <- c('bins', 'bias_pre_TF', 'bias_post_TF')
 
-            DT::datatable(acc2, options = list(dom = 't'))
+            DT::datatable(acc, options = list(dom = 't'))
             
           }
           
           #Agg effect, no TF
-          if(length(RdAgg) == 1 & length(RdTemp) == 0){
+           if(length(RdAgg) == 1 & length(RdTemp) == 0){
 
             #load only when file exist
             AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
@@ -508,25 +502,17 @@ server <- function(input, output, session) {
             
             #metrics per bin
             pre <- Accuracy(AGBBase, 6) #data, number of bins
-            post <- Accuracy(AGBAgg, 6)
-
-            #combine pre and post
-            acc0 <- cbind(post[1], post[2], pre[3], post[c(3,4)],pre[5], post[5],
-                          pre[6], post[6],pre[7], post[7])
-            ###gives the ff: bins   plots_count  plot_pre    plot_post     rmse pre post     rrmse pre post
+            post <- Accuracy(AGBTemp, 6)
             
-            #add bias column
-            acc1 <- cbind (acc0, old.bias = acc0[5] - acc0[3])
-            acc1 <- cbind (acc1, new.bias = acc1[5] - acc1[4])
+            #just get bias column
+            acc <- cbind(pre[1], pre[5],post[5])
+            names(acc) <- c('bins', 'bias_pre_agg', 'bias_post_agg')
             
-            #rename and arrange data frames
-            acc2 <- acc1 [,c(1,12,13)]
-            names(acc2) <- c('bins', 'bias_pre_Agg', 'bias_post_Agg')
+            DT::datatable(acc, options = list(dom = 't'))
             
-          }
-          
+           }
           #both TF and Agg effects
-          if(length(RdBoth) == 1 & length(RdTemp) == 1){
+          if(length(RdAgg) == 1 & length(RdTemp) == 1){
             #load only when file exist
             AGBBase <-get(load(paste0(resultsDir, '/', RdBase)))
             AGBAgg <-get(load(paste0(resultsDir, '/', RdAgg)))
@@ -537,24 +523,18 @@ server <- function(input, output, session) {
             post1 <- Accuracy(AGBTemp, 6)
             post2 <- Accuracy(AGBAgg, 6)
             
-            #combine pre and post
-            acc0 <- cbind(post[1], post1[2], pre[3], post1[3], post2[c(3,4)], pre[5], post1[5], post2[5],
-                          pre[6], post1[6], post2[6],pre[7], post1[7],post2[7])
-            #add bias column
-            acc1 <- cbind (acc0, old.bias = round(acc0[6] - acc0[3],2))
-            acc1 <- cbind (acc1, new.bias1 = round(acc1[6] - acc1[4],2))
-            acc1 <- cbind (acc1, new.bias2 = round(acc1[6] - acc1[5],2))
-
-            acc2 <- acc1[,c(1,16,17,18)] #get last 3 columns (biases)
-
+            #get bias columns   
+            acc <- cbind(pre[1], pre[5], post1[5], post2[5]) 
+            
             #rename and arrange data frames
-            cols <- c('bins', 'bias_pre', 'bias_post_TF', 'bias_post_Agg')
-            names(acc2) <- cols
-           
-           # DT::datatable(acc1, options = list(dom = 't'))
+            names(acc)  <- c('bins', 'bias_pre', 'bias_post_TF', 'bias_post_TF')
+            
+            DT::datatable(acc, options = list(dom = 't'))
             
           }
-        DT::datatable(acc2, options = list(dom = 't'))
+          
+
+          DT::datatable(acc, options = list(dom = 't'))
           
         }else{print('run baseline first (no TF - no Aggregation)')}
         

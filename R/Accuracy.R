@@ -106,12 +106,11 @@ Accuracy <- function(df, intervals=6, fname=''){
             'Bias (Mg/ha)', 'RMSE (Mg/ha)', 'Rel.RMSE (%)', 'SD error (Mg/ha)')
   df.new <- setnames(df.new, cols)
   
-  
   setwd(resultsDir)
-  if (length(fname) == 1){
-    write.csv(df.new, paste0('validation_result_',fname, '_',Sys.Date(), '.csv'), row.names=F)
-  }  setwd(outDir)
   
+  if (length(fname) == 1){
+    write.csv(df.new, paste0('validation_result_',fname, '_',Sys.Date(), '.csv'), row.names=F)}  
+  setwd(outDir)
   
   return(df.new)
 }

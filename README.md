@@ -1,16 +1,21 @@
-# PlotToMap
-Biomass validation app via Shiny
+# PlotToMap Beta Version
+Biomass validation app via Shiny using GlobBiomass map. 
 
+# Installation/use: 
+1. Clone/extract at desired directory.  
+2. Install packages manually or using package installers like pacman.  
+3. Change global and local variable root directories if needed. 
+4. Run locally.
 
 # Global variables
 SRS - default coordinates (WGS 1984)
 forestTHs - threshold for forests (10%)
+treeCoverDir - folder location of Hansen Tree Cover tiles
 
 # Local variables (user-end)
 dataDir - data directory consisting files like growth rates 
 agbDir -  folder directory of AGB tiles
-treeCoverDir - folder location of Hansen Tree Cover tiles
-scriptsDir - directory of extracted scripts *currently sourcing, but coulds be included at app.R
+scriptsDir - directory of extracted scripts 
 outDir - results directory
 
 # Widgets
@@ -44,7 +49,8 @@ No or wrong access to either Hansen tree cover or AGB tiles resulting into NULL 
 2. Image download button
 3. Nicer window format
 4. Transparency and data-use agreement section
+5. Inter-AGB map comparison
 
 # To be tested:
 1. Use of local forest cover dataset
-2
+2  Use of own biomass map instead of global maps
