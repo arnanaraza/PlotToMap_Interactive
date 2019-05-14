@@ -1,5 +1,5 @@
 # PlotToMap Beta Version
-Biomass validation app via Shiny using GlobBiomass map. 
+Biomass validation app via Shiny using GlobBiomass map. For testing, kindly email arnan.araza@wur.nl as one main input became offline and needs to be personally sent. 
 
 # Installation/use: 
 1. Clone/extract at desired directory.  
